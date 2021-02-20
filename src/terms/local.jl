@@ -15,7 +15,7 @@ abstract type TermLocalPotential <: Term end
            for kpoint in basis.kpoints]
     if :ρ in keys(kwargs)
         dVol = basis.model.unit_cell_volume / prod(basis.fft_size)
-        E = dVol * sum(kwargs[:ρ].real .* term.potential)
+        E = dVol * sum(ρtot(kwargs[:ρ]) .* term.potential)
     else
         E = T(Inf)
     end

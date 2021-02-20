@@ -37,11 +37,12 @@ end
 @timing "ene_ops: hartree" function ene_ops(term::TermHartree, ψ, occ; ρ, kwargs...)
     basis = term.basis
     T = eltype(basis)
-    pot_fourier = term.poisson_green_coeffs .* ρ.fourier
-    potential = real(G_to_r(basis, pot_fourier))  # TODO optimize this
-    E = real(dot(pot_fourier, ρ.fourier) / 2)
+    ρtot_fourier = r_to_G(basis, ρtot(ρ))
+    pot_fourier = term.poisson_green_coeffs .* ρtot_fourier
+    pot_real = G_to_r(basis, pot_fourier)
+    E = real(dot(pot_fourier, ρtot_fourier) / 2)
 
-    ops = [RealSpaceMultiplication(basis, kpoint, potential) for kpoint in basis.kpoints]
+    ops = [RealSpaceMultiplication(basis, kpoint, pot_real) for kpoint in basis.kpoints]
     (E=E, ops=ops)
 end
 
@@ -59,9 +60,9 @@ function compute_kernel(term::TermHartree; kwargs...)
     n_spin == 1 ? K : [K 0I; K 0I]
 end
 
-function apply_kernel(term::TermHartree, dρ::RealFourierArray, dρspin=nothing; kwargs...)
+function apply_kernel(term::TermHartree; kwargs...)
     @assert term.basis.model.spin_polarization in (:none, :spinless, :collinear)
-    kernel = from_fourier(dρ.basis, term.poisson_green_coeffs .* dρ.fourier)
+    kernel = G_to_r(basis, dρ.basis, term.poisson_green_coeffs .* r_to_G(basis, dρ))
     n_spin = term.basis.model.n_spin_components
     n_spin == 1 ? (kernel, ) : (kernel, kernel)  # Hartree term does not care about spin
 end

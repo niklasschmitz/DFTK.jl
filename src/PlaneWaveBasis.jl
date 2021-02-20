@@ -400,8 +400,15 @@ Perform an iFFT to obtain the quantity defined by `f_fourier` defined
 on the k-dependent spherical basis set (if `kpt` is given) or the
 k-independent cubic (if it is not) on the real-space grid.
 """
-function G_to_r(basis::PlaneWaveBasis, f_fourier::AbstractArray3)
-    G_to_r!(similar(f_fourier), basis, f_fourier)
+function G_to_r(basis::PlaneWaveBasis, f_fourier::AbstractArray; assume_real=true)
+    # assume_real is true by default because this is the most common usage
+    # (for densities & potentials)
+    f_real = similar(f_fourier)
+    # this exploits trailing index convention
+    for iσ = 1:size(f_fourier, 4)
+        @views G_to_r!(f_real[:, :, :, iσ], basis, f_fourier[:, :, :, iσ])
+    end
+    assume_real ? real(f_real) : f_real
 end
 function G_to_r(basis::PlaneWaveBasis, kpt::Kpoint, f_fourier::AbstractVector)
     G_to_r!(similar(f_fourier, basis.fft_size...), basis, kpt, f_fourier)
@@ -416,6 +423,9 @@ NOTE: If `kpt` is given, not only `f_fourier` but also `f_real` is overwritten.
 """
 @timing_seq function r_to_G!(f_fourier::AbstractArray3, basis::PlaneWaveBasis,
                              f_real::AbstractArray3)
+    if eltype(f_real) != complex(eltype(f_real))
+        f_real = complex.(f_real)
+    end
     mul!(f_fourier, basis.opFFT, f_real)
 end
 @timing_seq function r_to_G!(f_fourier::AbstractVector, basis::PlaneWaveBasis,
@@ -438,8 +448,13 @@ Perform an FFT to obtain the Fourier representation of `f_real`. If
 `kpt` is given, the coefficients are truncated to the k-dependent
 spherical basis set.
 """
-function r_to_G(basis::PlaneWaveBasis, f_real::AbstractArray3)
-    r_to_G!(similar(f_real), basis, f_real)
+function r_to_G(basis::PlaneWaveBasis, f_real::AbstractArray)
+    f_fourier = similar(f_real, complex(eltype(f_real)))
+    # this exploits trailing index convention
+    for iσ = 1:size(f_real, 4)
+        @views r_to_G!(f_fourier[:, :, :, iσ], basis, f_real[:, :, :, iσ])
+    end
+    f_fourier
 end
 # TODO optimize this
 function r_to_G(basis::PlaneWaveBasis, kpt::Kpoint, f_real::AbstractArray3)
