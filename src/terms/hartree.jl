@@ -37,7 +37,7 @@ end
 @timing "ene_ops: hartree" function ene_ops(term::TermHartree, ψ, occ; ρ, kwargs...)
     basis = term.basis
     T = eltype(basis)
-    ρtot_fourier = r_to_G(basis, ρtot(ρ))
+    ρtot_fourier = r_to_G(basis, total_density(ρ))
     pot_fourier = term.poisson_green_coeffs .* ρtot_fourier
     pot_real = G_to_r(basis, pot_fourier)
     E = real(dot(pot_fourier, ρtot_fourier) / 2)

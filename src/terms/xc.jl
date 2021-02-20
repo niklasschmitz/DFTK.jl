@@ -34,7 +34,7 @@ struct TermXc <: Term
     scaling_factor::Real
 end
 
-@timing "ene_ops: xc" function ene_ops(term::TermXc, ψ, occ; ρ, ρspin=nothing, kwargs...)
+@views @timing "ene_ops: xc" function ene_ops(term::TermXc, ψ, occ; ρ, kwargs...)
     basis = term.basis
     T     = eltype(basis)
     model = basis.model
@@ -46,11 +46,14 @@ end
         return (E=0, ops=ops)
     end
 
+    # TODO refactor to pass ρ directly to LibxcDensity
+    ρtot, ρspin = total_density(ρ), spin_density(ρ)
+
     # Take derivatives of the density if needed.
     max_ρ_derivs = maximum(max_required_derivative, term.functionals)
-    density = LibxcDensity(basis, max_ρ_derivs, ρ, ρspin)
+    density = LibxcDensity(basis, max_ρ_derivs, ρtot, ρspin)
 
-    potential = [zeros(T, basis.fft_size) for _ in 1:n_spin]  # TODO CPU arrays
+    potential = zero(ρ)
     zk = zeros(T, basis.fft_size)  # Energy per unit particle
     E = zero(T)
     for xc in term.functionals
@@ -59,23 +62,23 @@ end
 
         # Add energy contribution
         dVol = basis.model.unit_cell_volume / prod(basis.fft_size)
-        E += sum(terms.zk .* ρ.real) * dVol
+        E += sum(terms.zk .* ρtot) * dVol
 
         # Add potential contributions Vρ -2 ∇⋅(Vσ ∇ρ)
         for σ in 1:n_spin
-            potential[σ] .+= @view terms.vrho[σ, :, :, :]
+            potential[:, :, :, σ] .+= terms.vrho[σ, :, :, :]
         end
 
         if haskey(terms, :vsigma)  # Need gradient correction
             # TODO Potential to save some FFTs for spin-polarised calculations:
             #      For n_spin == 2 this calls divergence_real 4 times, where only 2 are
             #      needed (one for potential[1] and one for potential[2])
-            @views for σ in 1:n_spin, τ in 1:n_spin
+            for σ in 1:n_spin, τ in 1:n_spin
                 στ = libxc_symmetric_index(σ, τ)
                 # Extra factor (1/2) for σ != τ is needed because libxc only keeps σ_{αβ}
                 # in the energy expression. See comment block below on spin-polarised XC.
                 spinfac = (σ == τ ? 2 : 1)
-                potential[σ] .+=
+                potential[:, :, :, σ] .+=
                      -spinfac .* divergence_real(
                         α -> terms.vsigma[στ, :, :, :] .* density.∇ρ_real[τ, :, :, :, α],
                         density.basis
@@ -85,10 +88,10 @@ end
     end
     if term.scaling_factor != 1
         E *= term.scaling_factor
-        potential = [pot .*= term.scaling_factor for pot in potential]
+        potential .*= term.scaling_factor
     end
 
-    ops = [RealSpaceMultiplication(basis, kpoint, potential[kpoint.spin])
+    ops = [RealSpaceMultiplication(basis, kpoint, potential[:, :, :, kpoint.spin])
            for kpoint in basis.kpoints]
     (E=E, ops=ops)
 end
@@ -259,18 +262,19 @@ function libxc_symmetric_index(i, j)
 end
 
 
+# stores the input to libxc in a format it likes
 struct LibxcDensity
     basis
     max_derivative::Int
-    ρ_real    # density on real-space grid
-    ∇ρ_real   # density gradient on real-space grid
-    σ_real    # contracted density gradient on real-space grid
+    ρ_real    # density ρ[iσ, ix, iy, iz]
+    ∇ρ_real   # for GGA, density gradient ∇ρ[iσ, ix, iy, iz, iα]
+    σ_real    # for GGA, contracted density gradient σ[iσ, ix, iy, iz]
 end
 
 """
 Compute density in real space and its derivatives starting from ρ
 """
-function LibxcDensity(basis, max_derivative::Integer, ρ::RealFourierArray, ρspin=nothing)
+function LibxcDensity(basis, max_derivative::Integer, ρtot, ρspin=nothing)
     model = basis.model
     @assert model.spin_polarization in (:collinear, :none, :spinless)
     @assert max_derivative in (0, 1)
@@ -282,25 +286,27 @@ function LibxcDensity(basis, max_derivative::Integer, ρ::RealFourierArray, ρsp
     ∇ρ_real   = nothing
     if model.spin_polarization == :collinear
         @assert n_spin == 2
-        ρ_real    = similar(ρ.real,    n_spin, basis.fft_size...)
-        ρ_real[1, :, :, :] .= @. (ρ.real + ρspin.real) / 2
-        ρ_real[2, :, :, :] .= @. (ρ.real - ρspin.real) / 2
+        ρ_real    = similar(ρtot,    n_spin, basis.fft_size...)
+        ρ_real[1, :, :, :] .= @. (ρtot + ρspin) / 2
+        ρ_real[2, :, :, :] .= @. (ρtot - ρspin) / 2
 
         if max_derivative > 0
-            ρ_fourier = similar(ρ.fourier, n_spin, basis.fft_size...)
-            ρ_fourier[1, :, :, :] .= @. (ρ.fourier + ρspin.fourier) / 2
-            ρ_fourier[2, :, :, :] .= @. (ρ.fourier - ρspin.fourier) / 2
+            ρtot_fourier = r_to_G(basis, ρtot)
+            ρspin_fourier = r_to_G(basis, ρspin)
+            ρ_fourier = similar(ρtot_fourier, n_spin, basis.fft_size...)
+            ρ_fourier[1, :, :, :] .= @. (ρtot_fourier + ρspin_fourier) / 2
+            ρ_fourier[2, :, :, :] .= @. (ρtot_fourier - ρspin_fourier) / 2
         end
     else
         @assert n_spin == 1
-        ρ_real    = reshape(ρ.real,    1, basis.fft_size...)
-        ρ_fourier = reshape(ρ.fourier, 1, basis.fft_size...)
+        ρ_real    = reshape(ρtot,    1, basis.fft_size...)
+        ρ_fourier = r_to_G(basis, ρtot)
     end
 
     if max_derivative > 0
         n_spin_σ = div((n_spin + 1) * n_spin, 2)
-        ∇ρ_real = similar(ρ.real,   n_spin, basis.fft_size..., 3)
-        σ_real  = similar(ρ.real, n_spin_σ, basis.fft_size...)
+        ∇ρ_real = similar(ρ_real,   n_spin, basis.fft_size..., 3)
+        σ_real  = similar(ρ_real, n_spin_σ, basis.fft_size...)
 
         for α = 1:3
             iGα = [im * G[α] for G in G_vectors_cart(basis)]
@@ -323,6 +329,7 @@ function LibxcDensity(basis, max_derivative::Integer, ρ::RealFourierArray, ρsp
     LibxcDensity(basis, max_derivative, ρ_real, ∇ρ_real, σ_real)
 end
 
+# See libxc documentation
 function Libxc.evaluate(xc::Functional, density::LibxcDensity; kwargs...)
     if xc.family == :lda
         evaluate(xc; rho=density.ρ_real, kwargs...)

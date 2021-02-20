@@ -1,3 +1,6 @@
+## Densities (and potentials) are represented by arrays
+## ρ[ix,iy,iz,iσ] in real space, where iσ ∈ [1:n_spin_components]
+
 """
 Compute the partial density at the indicated ``k``-Point and return it (in Fourier space).
 """
@@ -95,6 +98,11 @@ is not collinear the spin density is `nothing`.
     G_to_r(basis, ρ)
 end
 
-ρtot(ρ) = dropdims(sum(ρ; dims=4); dims=4)
-# will return a 0x0x0 array if just one spin component
-ρspin(ρ) = dropdims(diff(ρ; dims=4); dims=4)
+total_density(ρ) = dropdims(sum(ρ; dims=4); dims=4)
+@views function spin_density(ρ)
+    if size(ρ, 4) == 2
+        ρ[:, :, :, 2] - ρ[:, :, :, 1]
+    else
+        0*ρ[:, :, :]
+    end
+end
