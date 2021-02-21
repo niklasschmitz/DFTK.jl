@@ -106,3 +106,15 @@ total_density(ρ) = dropdims(sum(ρ; dims=4); dims=4)
         0*ρ[:, :, :]
     end
 end
+
+function ρ_from_total_and_spin(ρtot, ρspin)
+    n_spin = ρspin === nothing ? 1 : 2
+    ρ = similar(ρtot, size(ρtot)..., n_spin)
+    if n_spin == 1
+        ρ .= ρtot
+    else
+        ρ[:, :, :, 1] .= (ρtot .+ ρspin) ./ 2
+        ρ[:, :, :, 2] .= (ρtot .- ρspin) ./ 2
+    end
+    ρ
+end

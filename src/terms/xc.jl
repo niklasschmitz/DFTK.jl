@@ -46,12 +46,9 @@ end
         return (E=0, ops=ops)
     end
 
-    # TODO refactor to pass ρ directly to LibxcDensity
-    ρtot, ρspin = total_density(ρ), spin_density(ρ)
-
     # Take derivatives of the density if needed.
     max_ρ_derivs = maximum(max_required_derivative, term.functionals)
-    density = LibxcDensity(basis, max_ρ_derivs, ρtot, ρspin)
+    density = LibxcDensity(basis, max_ρ_derivs, ρ)
 
     potential = zero(ρ)
     zk = zeros(T, basis.fft_size)  # Energy per unit particle
@@ -62,7 +59,7 @@ end
 
         # Add energy contribution
         dVol = basis.model.unit_cell_volume / prod(basis.fft_size)
-        E += sum(terms.zk .* ρtot) * dVol
+        E += sum(terms.zk .* total_density(ρ)) * dVol
 
         # Add potential contributions Vρ -2 ∇⋅(Vσ ∇ρ)
         for σ in 1:n_spin
@@ -143,27 +140,25 @@ function apply_kernel(term::TermXc, dρ;
 
     # Take derivatives of the density and the perturbation if needed.
     max_ρ_derivs = maximum(max_required_derivative, term.functionals)
-    density      = LibxcDensity(basis, max_ρ_derivs, ρ, ρspin)
-    perturbation = LibxcDensity(basis, max_ρ_derivs, dρ, dρspin)
+    density      = LibxcDensity(basis, max_ρ_derivs, ρ)
+    perturbation = LibxcDensity(basis, max_ρ_derivs, dρ)
 
-    result = similar(ρ.real, basis.fft_size..., n_spin)
-    result .= 0
+    dV = zero(ρ)
     for xc in term.functionals
         # TODO LDA actually only needs the 2nd derivatives for this ... could be optimised
         terms = evaluate(xc, density, derivatives=1:2)
 
-        # Accumulate LDA and GGA terms in result
+        # Accumulate LDA and GGA terms in dV
         @views for σ in 1:n_spin, τ in 1:n_spin
             στ = libxc_symmetric_index(σ, τ)
-            result[:, :, :, σ] .+= terms.v2rho2[στ, :, :, :] .* perturbation.ρ_real[τ, :, :, :]
+            dV[:, :, :, σ] .+= terms.v2rho2[στ, :, :, :] .* perturbation.ρ_real[τ, :, :, :]
         end
         if haskey(terms, :v2rhosigma)
             @assert basis.model.spin_polarization in (:none, :spinless)
-            result[:, :, :, 1] .+= apply_kernel_gradient_correction(terms, density, perturbation)
+            dV[:, :, :, 1] .+= apply_kernel_gradient_correction(terms, density, perturbation)
         end
     end
-
-    [from_real(basis, term.scaling_factor .* result[:, :, :, σ]) for σ in 1:n_spin]
+    dV
 end
 
 #=
@@ -274,7 +269,8 @@ end
 """
 Compute density in real space and its derivatives starting from ρ
 """
-function LibxcDensity(basis, max_derivative::Integer, ρtot, ρspin=nothing)
+function LibxcDensity(basis, max_derivative::Integer, ρ)
+    ρtot, ρspin = total_density(ρ), spin_density(ρ)
     model = basis.model
     @assert model.spin_polarization in (:collinear, :none, :spinless)
     @assert max_derivative in (0, 1)

@@ -2,7 +2,7 @@ import Base: @kwdef
 
 # structs defining terms of a composable model for the independent-particle
 # susceptibility χ0. The struct define a call operator, which does some setup
-# and returns an `apply!(δρ, δV, α=1)` function to from `δρ .+= α * χ0 * δV`.
+# and returns an `apply!(δρ, δV, α=1)` function to form `δρ .+= α * χ0 * δV`.
 
 abstract type χ0Model end
 
