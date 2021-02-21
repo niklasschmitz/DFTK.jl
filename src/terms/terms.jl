@@ -97,11 +97,11 @@ function compute_forces_cart(basis::PlaneWaveBasis, ψ, occ; kwargs...)
 end
 
 function compute_forces(scfres)
-    compute_forces(scfres.basis, scfres.ψ, scfres.occupation; ρ=scfres.ρ, ρspin=scfres.ρspin)
+    compute_forces(scfres.basis, scfres.ψ, scfres.occupation; ρ=scfres.ρ)
 end
 function compute_forces_cart(scfres)
     compute_forces_cart(scfres.basis, scfres.ψ, scfres.occupation;
-                        ρ=scfres.ρ, ρspin=scfres.ρspin)
+                        ρ=scfres.ρ)
 end
 
 
@@ -139,29 +139,23 @@ compute_kernel(::Term; kwargs...) = nothing  # By default no kernel
 """
     apply_kernel(basis::PlaneWaveBasis, dρ, dρspin=nothing; kwargs...)
 
-Computes the potential response to a perturbation `(dρ, dρspin)` in real space.
-Returns the array `[dV_α, dV_β]` for collinear spin-polarized
-calculations, else the array [dV_{tot}].
+Computes the potential response to a perturbation dρ in real space.
 """
-@timing function apply_kernel(basis::PlaneWaveBasis, dρ, dρspin=nothing;
+@timing function apply_kernel(basis::PlaneWaveBasis, dρ;
                               RPA=false, kwargs...)
     n_spin = basis.model.n_spin_components
-    (n_spin == 1) && @assert isnothing(dρspin)
-    (n_spin == 2) && @assert !isnothing(dρspin)
     @assert 1 ≤ n_spin ≤ 2
 
-    dV = [RealFourierArray(basis) for _ in 1:n_spin]
+    dV = zero(dρ)
     for term in basis.terms
         # Skip XC term if RPA is selected
         RPA && term isa TermXc && continue
 
-        dV_term = apply_kernel(term, dρ, dρspin; kwargs...)
+        dV_term = apply_kernel(term, dρ; kwargs...)
         if !isnothing(dV_term)
-            for σ in 1:n_spin
-                dV[σ].real .+= dV_term[σ].real
-            end
+            dV .+= dV_term
         end
     end
     dV
 end
-apply_kernel(::Term, dρ, dρspin; kwargs...) = nothing  # by default, no kernel
+apply_kernel(::Term, dρ; kwargs...) = nothing  # by default, no kernel

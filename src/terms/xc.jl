@@ -132,8 +132,8 @@ function compute_kernel(term::TermXc; ρ::RealFourierArray, ρspin=nothing, kwar
     end
 end
 
-function apply_kernel(term::TermXc, dρ::RealFourierArray, dρspin=nothing;
-                      ρ::RealFourierArray, ρspin=nothing, kwargs...)
+function apply_kernel(term::TermXc, dρ;
+                      ρ, kwargs...)
     basis  = term.basis
     T      = eltype(basis)
     n_spin = basis.model.n_spin_components
