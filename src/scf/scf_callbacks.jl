@@ -25,8 +25,8 @@ function ScfDefaultCallback()
             @printf "---   ---------------   ---------   --------%s   ----\n" magn[2]
         end
         E    = isnothing(info.energies) ? Inf : info.energies.total
-        Δρ   = norm(info.ρout.fourier - info.ρin.fourier)
-        magn = isnothing(info.ρ_spin_out) ? NaN : sum(info.ρ_spin_out.real) * dVol
+        Δρ   = norm(info.ρout - info.ρin) * sqrt(dVol)
+        magn = size(info.ρout, 4) == 1 ? NaN : sum(spin_density(ρout)) * dVol
 
         Estr   = (@sprintf "%+15.12f" round(E, sigdigits=13))[1:15]
         prev_E = prev_energies === nothing ? Inf : prev_energies.total
@@ -51,7 +51,8 @@ function ScfConvergenceEnergy(tolerance)
         info.energies === nothing && return false # first iteration
 
         # The ρ change should also be small, otherwise we converge if the SCF is just stuck
-        norm(info.ρout.fourier - info.ρin.fourier) > 10sqrt(tolerance) && return false
+        dVol      = info.basis.model.unit_cell_volume / prod(info.basis.fft_size)
+        norm(info.ρout - info.ρin) * sqrt(dVol) > 10sqrt(tolerance) && return false
 
         etot_old = energy_total
         energy_total = info.energies.total
@@ -65,7 +66,11 @@ Flag convergence by using the L2Norm of the change between
 input density and unpreconditioned output density (ρout)
 """
 function ScfConvergenceDensity(tolerance)
-    info -> norm(info.ρout.fourier - info.ρin.fourier) < tolerance
+    function f(info)
+        dVol      = info.basis.model.unit_cell_volume / prod(info.basis.fft_size)
+        norm(info.ρout - info.ρin) * sqrt(dVol) < tolerance
+    end
+    f
 end
 
 """
@@ -80,10 +85,10 @@ function ScfDiagtol(;ratio_ρdiff=0.2, diagtol_min=nothing, diagtol_max=0.03)
         info.n_iter ≤ 1 && return diagtol_max
         info.n_iter == 2 && (diagtol_max /= 5)  # Enforce more accurate Bloch wave
 
-        diagtol = norm(info.ρnext.fourier - info.ρin.fourier) * ratio_ρdiff
+        dVol      = info.basis.model.unit_cell_volume / prod(info.basis.fft_size)
+        diagtol = norm(info.ρnext - info.ρin) * sqrt(dVol) * ratio_ρdiff
         # TODO Quantum espresso divides diagtol by the number of electrons
-        diagtol = min(diagtol_max, diagtol)  # Don't overshoot
-        diagtol = max(diagtol_min, diagtol)  # Don't undershoot
+        diagtol = clamp(diagtol, diagtol_min, diagtol_max)
         @assert isfinite(diagtol)
 
         # Adjust maximum to ensure diagtol may only shrink during an SCF

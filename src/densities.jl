@@ -35,7 +35,7 @@ function compute_partial_density!(ρ, basis, kpt, ψk, occupation)
     end
 
     # FFT and return
-    r_to_G!(ρ, basis, complex(ρk_real))
+    r_to_G!(ρ, basis, ρk_real)
 end
 
 
@@ -101,7 +101,7 @@ end
 total_density(ρ) = dropdims(sum(ρ; dims=4); dims=4)
 @views function spin_density(ρ)
     if size(ρ, 4) == 2
-        ρ[:, :, :, 2] - ρ[:, :, :, 1]
+        ρ[:, :, :, 1] - ρ[:, :, :, 2]
     else
         0*ρ[:, :, :]
     end
