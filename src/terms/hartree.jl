@@ -37,7 +37,8 @@ end
 @timing "ene_ops: hartree" function ene_ops(term::TermHartree, ψ, occ; ρ, kwargs...)
     basis = term.basis
     T = eltype(basis)
-    ρtot_fourier = r_to_G(basis, total_density(ρ))
+    ρtot = total_density(ρ)
+    ρtot_fourier = r_to_G(basis, ρtot)
     pot_fourier = term.poisson_green_coeffs .* ρtot_fourier
     pot_real = G_to_r(basis, pot_fourier)
     E = real(dot(pot_fourier, ρtot_fourier) / 2)
@@ -52,17 +53,14 @@ function compute_kernel(term::TermHartree; kwargs...)
     # Note that `real` here: if omitted, will result in high-frequency noise of even FFT grids
     K = real(G_to_r_matrix(term.basis) * Diagonal(vec(vc_G)) * r_to_G_matrix(term.basis))
 
-    # Hartree kernel is independent of spin, so to apply it to (ρtot, ρspin)^T
-    # and obtain the same contribution to Vα and Vβ the operator has the block structure
-    #     ( K 0 )
-    #     ( K 0 )
     n_spin = term.basis.model.n_spin_components
-    n_spin == 1 ? K : [K 0I; K 0I]
+    n_spin == 1 ? K : reshape([K K; K K], n_spin*length(vc_G), n_spin*length(vc_G))
 end
 
-function apply_kernel(term::TermHartree; kwargs...)
+function apply_kernel(term::TermHartree, dρ; kwargs...)
     @assert term.basis.model.spin_polarization in (:none, :spinless, :collinear)
-    kernel = G_to_r(basis, dρ.basis, term.poisson_green_coeffs .* r_to_G(basis, dρ))
-    n_spin = term.basis.model.n_spin_components
-    n_spin == 1 ? (kernel, ) : (kernel, kernel)  # Hartree term does not care about spin
+    dρtot = total_density(dρ)
+    dVσ = G_to_r(term.basis, term.poisson_green_coeffs .* r_to_G(term.basis, dρ))
+    dV = similar(dρ)
+    dV .= dVσ
 end

@@ -29,21 +29,12 @@ end
 
 _pnl_kernel(C, α, ρ) = @. C * α * (α-1) * ρ^(α-2)
 
-function compute_kernel(term::TermPowerNonlinearity, dρspin=nothing;
-                        ρ::RealFourierArray, ρspin=nothing, kwargs...)
-    @assert term.basis.model.spin_polarization in (:none, :spinless, :collinear)
-    K = Diagonal(vec(_pnl_kernel(term.C, term.α, ρ.real)))
-
-    # PNL kernel is independent of spin, so to apply it to (ρtot, ρspin)^T
-    # and obtain the same contribution to Vα and Vβ the operator has the block structure
-    #     ( K 0 )
-    #     ( K 0 )
-    n_spin = term.basis.model.n_spin_components
-    n_spin == 1 ? K : [K 0I; K 0I]
+function compute_kernel(term::TermPowerNonlinearity;
+                        ρ, kwargs...)
+    K = Diagonal(vec(_pnl_kernel(term.C, term.α, ρ)))
 end
 
 function apply_kernel(term::TermPowerNonlinearity, dρ;
                       ρ, kwargs...)
-    @assert term.basis.model.spin_polarization in (:none, :spinless, :collinear)
-    kernel = from_real(term.basis, _pnl_kernel(term.C, term.α, ρ.real) .* dρ.real)
+    kernel = _pnl_kernel(term.C, term.α, ρ) .* dρ
 end

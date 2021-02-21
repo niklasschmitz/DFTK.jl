@@ -118,14 +118,9 @@ function compute_kernel(term::TermXc; ρ::RealFourierArray, ρspin=nothing, kwar
         Kβα = Kαβ
         Kββ = @view kernel[3, :, :, :]
 
-        # Blocks in the kernel matrix mapping (ρtot, ρspin) ↦ (Vα, Vβ)
-        K_αtot  = Diagonal(vec(fac * (Kαα + Kαβ) / 2))
-        K_αspin = Diagonal(vec(fac * (Kαα - Kαβ) / 2))
-        K_βtot  = Diagonal(vec(fac * (Kβα + Kββ) / 2))
-        K_βspin = Diagonal(vec(fac * (Kβα - Kββ) / 2))
-
-        [K_αtot K_αspin;
-         K_βtot K_βspin]
+        K = fac .* [Diagonal(K_αα) Diagonal(K_αβ);
+                    Diagonal(K_βα) Diagonal(K_ββ)]
+        reshape(K, 2*prod(basis.fft_size), 2*prod(basis.fft_size))
     end
 end
 

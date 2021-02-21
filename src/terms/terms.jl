@@ -114,15 +114,13 @@ For non-spin-polarized calculations the matrix dimension is
 `prod(basis.fft_size)` × `prod(basis.fft_size)` and
 for collinear spin-polarized cases it is
 `2prod(basis.fft_size)` × `2prod(basis.fft_size)`.
-In this case the matrix has effectively 4 blocks, which are:
+In this case the matrix has effectively 4 blocks
 ```math
 \left(\begin{array}{cc}
-    K_{α, \text{tot}} & K_{α, \text{spin}}\\
-    K_{β, \text{tot}} & K_{β, \text{spin}}
+    K_{αα} & K_{αβ}\\
+    K_{βα} & K_{ββ}
 \end{array}\right)
 ```
-i.e. corresponding to a mapping
-``(ρ_\text{tot}, ρ_\text{spin})^T = (ρ_α + ρ_β, ρ_α - ρ_β)^T ↦ (V_α, V_β)^T``.
 """
 @timing function compute_kernel(basis::PlaneWaveBasis{T}; kwargs...) where {T}
     n_spin = basis.model.n_spin_components
