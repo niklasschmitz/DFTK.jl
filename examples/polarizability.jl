@@ -80,17 +80,11 @@ println("Polarizability :   $polarizability")
 
 using KrylovKit
 
-## KrylovKit cannot deal with the density as a 3D array, so we need `vec` to vectorize
-## and `devec` to "unvectorize"
-## TODO it probably can
-devec(arr) = reshape(arr, size(res.ρ))
-
-## Apply (1- χ0 K) to a vectorized dρ
+## Apply (1- χ0 K)
 function dielectric_operator(dρ)
-    dρ = devec(dρ)
     dv = apply_kernel(basis, dρ; ρ=res.ρ)
     χ0dv = apply_χ0(res.ham, res.ψ, res.εF, res.eigenvalues, dv)
-    vec(dρ - χ0dv)
+    dρ - χ0dv
 end
 
 ## dVext is the potential from a uniform field interacting with the dielectric dipole
@@ -102,7 +96,7 @@ dVext = cat(dVext; dims=4)
 dρ_nointeract = apply_χ0(res.ham, res.ψ, res.εF, res.eigenvalues, dVext)
 
 ## Solve Dyson equation to get interacting dipole
-dρ = devec(linsolve(dielectric_operator, vec(dρ_nointeract), verbosity=3)[1])
+dρ = devec(linsolve(dielectric_operator, dρ_nointeract, verbosity=3)[1])
 
 println("Non-interacting polarizability: $(dipole(basis, dρ_nointeract))")
 println("Interacting polarizability:     $(dipole(basis, dρ))")
