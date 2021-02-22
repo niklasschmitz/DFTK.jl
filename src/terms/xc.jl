@@ -118,9 +118,9 @@ function compute_kernel(term::TermXc; ρ, kwargs...)
         Kβα = Kαβ
         Kββ = @view kernel[3, :, :, :]
 
-        K = fac .* [Diagonal(Kαα) Diagonal(Kαβ);
-                    Diagonal(Kβα) Diagonal(Kββ)]
-        reshape(K, 2*prod(basis.fft_size), 2*prod(basis.fft_size))
+        K = fac .* [Diagonal(vec(Kαα)) Diagonal(vec(Kαβ));
+                    Diagonal(vec(Kβα)) Diagonal(vec(Kββ))]
+        reshape(K, 2*prod(term.basis.fft_size), 2*prod(term.basis.fft_size))
     end
 end
 
@@ -265,34 +265,28 @@ end
 Compute density in real space and its derivatives starting from ρ
 """
 function LibxcDensity(basis, max_derivative::Integer, ρ)
-    ρtot, ρspin = total_density(ρ), spin_density(ρ)
     model = basis.model
     @assert model.spin_polarization in (:collinear, :none, :spinless)
     @assert max_derivative in (0, 1)
-    ifft(x) = real_checked(G_to_r(basis, clear_without_conjugate!(x)))
 
     n_spin    = model.n_spin_components
     σ_real    = nothing
     ∇ρ_real   = nothing
-    if model.spin_polarization == :collinear
-        @assert n_spin == 2
-        ρ_real    = similar(ρtot,    n_spin, basis.fft_size...)
-        ρ_real[1, :, :, :] .= @. (ρtot + ρspin) / 2
-        ρ_real[2, :, :, :] .= @. (ρtot - ρspin) / 2
 
-        if max_derivative > 0
-            ρtot_fourier = r_to_G(basis, ρtot)
-            ρspin_fourier = r_to_G(basis, ρspin)
-            ρ_fourier = similar(ρtot_fourier, n_spin, basis.fft_size...)
-            ρ_fourier[1, :, :, :] .= @. (ρtot_fourier + ρspin_fourier) / 2
-            ρ_fourier[2, :, :, :] .= @. (ρtot_fourier - ρspin_fourier) / 2
+    # compute ρ_real and possibly ρ_fourier
+    ρ_real = similar(ρ, n_spin, basis.fft_size...)
+    for σ = 1:n_spin
+        ρ_real[σ, :, :, :] = ρ[:, :, :, σ]
+    end
+    if max_derivative > 0
+        ρf = r_to_G(basis, ρ)
+        ρ_fourier = similar(ρf, n_spin, basis.fft_size...)
+        for σ = 1:n_spin
+            ρ_fourier[σ, :, :, :] = ρf[:, :, :, σ]
         end
-    else
-        @assert n_spin == 1
-        ρ_real    = reshape(ρtot,    1, basis.fft_size...)
-        ρ_fourier = r_to_G(basis, ρtot)
     end
 
+    # compute ∇ρ and σ
     if max_derivative > 0
         n_spin_σ = div((n_spin + 1) * n_spin, 2)
         ∇ρ_real = similar(ρ_real,   n_spin, basis.fft_size..., 3)
@@ -301,7 +295,7 @@ function LibxcDensity(basis, max_derivative::Integer, ρ)
         for α = 1:3
             iGα = [im * G[α] for G in G_vectors_cart(basis)]
             for σ = 1:n_spin
-                ∇ρ_real[σ, :, :, :, α] .= ifft(iGα .* @view ρ_fourier[σ, :, :, :])
+                ∇ρ_real[σ, :, :, :, α] .= G_to_r(basis, iGα .* @view ρ_fourier[σ, :, :, :])
             end
         end
 
@@ -337,11 +331,11 @@ The divergence is also returned as a real-space array.
 """
 function divergence_real(operand, basis)
     gradsum = sum(1:3) do α
-        operand_α = r_to_G(basis, complex(operand(α)))
+        operand_α = r_to_G(basis, operand(α))
         del_α = im * [G[α] for G in G_vectors_cart(basis)]
         del_α .* operand_α
     end
-    real(G_to_r(basis, gradsum))
+    G_to_r(basis, gradsum)
 end
 
 function apply_kernel_gradient_correction(terms, density, perturbation)

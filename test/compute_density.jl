@@ -128,7 +128,7 @@ if mpi_nprocs() == 1  # not easy to distribute
             end  # k
 
             @test n_ρ == length(kfull)
-            @test maximum(abs, ρsum / n_ρ - r_to_G(basis, ρ_full)) < 10tol
+            @test maximum(abs, ρsum / n_ρ - r_to_G(ham_ir.basis, ρ_full)) < 10tol
         end # eigenvectors
     end
 

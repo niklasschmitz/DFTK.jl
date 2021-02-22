@@ -22,15 +22,15 @@ scfres = self_consistent_field(basis, tol=1e-14)
 
 # Apply ε† = 1 - χ0 (vc + fxc)
 function eps_fun(dρ)
-    dρ = reshape(dρ, size(scfres.ρ.real))
-    dρ = from_real(basis, dρ)
+    dρ = reshape(dρ, size(scfres.ρ))
     dv = apply_kernel(basis, dρ; ρ=scfres.ρ)
-    χdv = apply_χ0(scfres.ham, scfres.ψ, scfres.εF, scfres.eigenvalues, dv...)[1]
-    vec((dρ - χdv).real)
+    χdv = apply_χ0(scfres.ham, scfres.ψ, scfres.εF, scfres.eigenvalues, dv)
+    vec(dρ - χdv)
 end
 
 # A straightfoward Arnoldi eigensolver that diagonalizes the matrix at each step
 # This is more efficient than Arpack when `f` is very expensive
+# TODO KrylovKit now supports this with the `eager` keyword, switch to that
 println("Starting Arnoldi ...")
 function arnoldi(f, x0; howmany=5, tol=1e-4, maxiter=30, n_print=howmany)
     for (V, B, r, nr, b) in ArnoldiIterator(f, x0)
@@ -62,4 +62,4 @@ function arnoldi(f, x0; howmany=5, tol=1e-4, maxiter=30, n_print=howmany)
         end
     end
 end
-arnoldi(eps_fun, vec(randn(size(scfres.ρ.real))); howmany=5)
+arnoldi(eps_fun, vec(randn(size(scfres.ρ))); howmany=5)

@@ -78,7 +78,7 @@ function plot_dos(basis, eigenvalues; εF=nothing, kwargs...)
     p = Plots.plot(;kwargs...)
     spinlabels = spin_components(basis.model)
     colors = [:blue, :red]
-    Dεs = compute_dos(εs, Ref(basis), Ref(eigenvalues))
+    Dεs = compute_dos.(εs, Ref(basis), Ref(eigenvalues))
     for σ in 1:n_spin
         D = [Dσ[σ] for Dσ in Dεs]
         label = n_spin > 1 ? "DOS $(spinlabels[σ]) spin" : "DOS"

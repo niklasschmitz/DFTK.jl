@@ -92,8 +92,8 @@ function compute_χ0(ham; droptol=0, temperature=ham.basis.model.temperature)
     # Add variation wrt εF (which is not diagonal wrt. spin)
     if temperature > 0
         dos  = compute_dos(εF, basis, Es)
-        ldos = [vec(compute_ldos(εF, basis, Es, Vs, spins=[σ])) for σ in 1:n_spin]
-        χ0 .+= ldos .* ldos' .* dVol ./ dos
+        ldos = compute_ldos(εF, basis, Es, Vs)
+        χ0 .+= vec(ldos) .* vec(ldos)' .* dVol ./ sum(dos)
     end
     χ0
 end
@@ -162,7 +162,7 @@ returns `3` extra bands, which are not converged by the eigensolver
     # Sternheimer linear solver (it makes the rhs be order 1 even if
     # δV is small)
     normδV = norm(δV)
-    normδV < eps(T) && return zero(normδV)
+    normδV < eps(T) && return zero(δV)
 
     # Make δV respect the full model symmetry group, since it's
     # invalid to consider perturbations that don't (technically it
@@ -179,7 +179,7 @@ returns `3` extra bands, which are not converged by the eigensolver
     # δρ = ∑_nk (f'n δεn |ψn|^2 + 2Re fn ψn* δψn - f'n δεF |ψn|^2
     δρ_fourier = zeros(complex(eltype(δV)), size(δV)...)
     for (ik, kpt) in enumerate(basis.kpoints)
-        δρk = zero(δV)
+        δρk = zeros(eltype(δV), basis.fft_size)
         for n = 1:size(ψ[ik], 2)
             add_response_from_band!(δρk, n, ham.blocks[ik], eigenvalues[ik], ψ[ik],
                                     εF, δV[:, :, :, kpt.spin], temperature, droptol,
@@ -201,8 +201,7 @@ returns `3` extra bands, which are not converged by the eigensolver
         ldos = compute_ldos(εF, basis, eigenvalues, ψ, temperature=temperature)
         dos  = compute_dos(εF, basis, eigenvalues, temperature=temperature)
 
-        dotldosδV = dot(ldos, δV)
-        δρ .+= ldos .* dotldosδV .* dVol ./ dos
+        δρ .+= ldos .* dot(ldos, δV) .* dVol ./ sum(dos)
     end
     δρ .* normδV
 end

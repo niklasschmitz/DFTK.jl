@@ -60,7 +60,7 @@ end
 function apply_kernel(term::TermHartree, dρ; kwargs...)
     @assert term.basis.model.spin_polarization in (:none, :spinless, :collinear)
     dρtot = total_density(dρ)
-    dVσ = G_to_r(term.basis, term.poisson_green_coeffs .* r_to_G(term.basis, dρ))
+    dVσ = G_to_r(term.basis, term.poisson_green_coeffs .* r_to_G(term.basis, dρtot))
     dV = similar(dρ)
     dV .= dVσ
 end
