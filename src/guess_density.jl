@@ -21,14 +21,12 @@ end
 
     ρ = zeros(T, basis.fft_size..., basis.model.n_spin_components)
     if basis.model.n_spin_components == 1
-        ρ[:, :, :, 1] = ρtot
+        ρspin = nothing
     else
         ρspin = _guess_spin_density(basis, atoms, magnetic_moments)
-        ρ[:, :, :, 1] = (ρtot .+ ρspin) ./ 2
-        ρ[:, :, :, 2] = (ρtot .- ρspin) ./ 2
     end
 
-    return ρ
+    ρ_from_total_and_spin(ρtot, ρspin)
 end
 
 function _guess_spin_density(basis::PlaneWaveBasis{T}, atoms, magnetic_moments) where {T}
@@ -45,7 +43,7 @@ function _guess_spin_density(basis::PlaneWaveBasis{T}, atoms, magnetic_moments) 
         @warn("Returning zero spin density guess, because no initial magnetization has " *
               "been specified in any of the given elements / atoms. Your SCF will likely " *
               "not converge to a spin-broken solution.")
-        return from_fourier(basis, zeros(complex(T), basis.fft_size))
+        return zeros(T, basis.fft_size)
     end
 
     gaussians = Tuple{T, T, Vec3{T}}[]

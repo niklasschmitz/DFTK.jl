@@ -75,7 +75,7 @@ if mpi_nprocs() == 1  # not easy to distribute
 
         # Test density is the same in both schemes, and symmetric wrt the basis symmetries
         @test maximum(abs.(ρ_ir - ρ_full)) < 10tol
-        @test maximum(abs, DFTK.symmetrize(basis, ρ_ir; symmetries=symmetries) - ρ_ir) < tol
+        @test maximum(abs, DFTK.symmetrize(ham_ir.basis, ρ_ir; symmetries=symmetries) - ρ_ir) < tol
 
         # Test local potential is the same in both schemes
         @test maximum(abs, total_local_potential(ham_ir) - total_local_potential(ham_full)) < tol
@@ -102,7 +102,7 @@ if mpi_nprocs() == 1  # not easy to distribute
             # yields an eigenfunction of the Hamiltonian
             # Also check that the accumulated partial densities are equal
             # to the returned density.
-            ρsum = zero(ρ_ir.fourier)
+            ρsum = zeros(eltype(ψ_ir[1]), ham_ir.basis.fft_size)
             n_ρ = 0
             for (ik, k) in enumerate(kcoords)
                 Hk_ir = ham_ir.blocks[ik]

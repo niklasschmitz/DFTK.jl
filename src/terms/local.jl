@@ -100,6 +100,7 @@ end
     atoms = term.basis.model.atoms
     recip_lattice = term.basis.model.recip_lattice
     unit_cell_volume = term.basis.model.unit_cell_volume
+    ρ_fourier = r_to_G(term.basis, total_density(ρ))
 
     # energy = sum of form_factor(G) * struct_factor(G) * rho(G)
     # where struct_factor(G) = cis(-2π G⋅r)
@@ -109,7 +110,7 @@ end
                         for G in G_vectors(term.basis)]
 
         for (ir, r) in enumerate(positions)
-            forces[iel][ir] = _force_local_internal(term.basis, ρ.fourier, form_factors, r)
+            forces[iel][ir] = _force_local_internal(term.basis, ρ_fourier, form_factors, r)
         end
     end
     forces

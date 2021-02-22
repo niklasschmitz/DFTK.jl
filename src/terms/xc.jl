@@ -59,7 +59,7 @@ end
 
         # Add energy contribution
         dVol = basis.model.unit_cell_volume / prod(basis.fft_size)
-        E += sum(terms.zk .* total_density(ρ)) * dVol
+        E += sum(terms.zk .* ρ) * dVol
 
         # Add potential contributions Vρ -2 ∇⋅(Vσ ∇ρ)
         for σ in 1:n_spin
@@ -95,7 +95,7 @@ end
 
 function compute_kernel(term::TermXc; ρ, kwargs...)
     @assert term.basis.model.spin_polarization in (:none, :spinless, :collinear)
-    density = LibxcDensity(term.basis, 0, ρ, ρspin)
+    density = LibxcDensity(term.basis, 0, ρ)
     n_spin = term.basis.model.n_spin_components
     n_fxc  = n_spin == 1 ? 1 : 3  # Number of spin components in fxc
     @assert 1 ≤ n_spin ≤ 2
@@ -118,8 +118,8 @@ function compute_kernel(term::TermXc; ρ, kwargs...)
         Kβα = Kαβ
         Kββ = @view kernel[3, :, :, :]
 
-        K = fac .* [Diagonal(K_αα) Diagonal(K_αβ);
-                    Diagonal(K_βα) Diagonal(K_ββ)]
+        K = fac .* [Diagonal(Kαα) Diagonal(Kαβ);
+                    Diagonal(Kβα) Diagonal(Kββ)]
         reshape(K, 2*prod(basis.fft_size), 2*prod(basis.fft_size))
     end
 end
@@ -269,7 +269,6 @@ function LibxcDensity(basis, max_derivative::Integer, ρ)
     model = basis.model
     @assert model.spin_polarization in (:collinear, :none, :spinless)
     @assert max_derivative in (0, 1)
-    model.spin_polarization == :collinear && (@assert !isnothing(ρspin))
     ifft(x) = real_checked(G_to_r(basis, clear_without_conjugate!(x)))
 
     n_spin    = model.n_spin_components

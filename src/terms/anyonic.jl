@@ -113,7 +113,7 @@ function ene_ops(term::TermAnyonic, ψ, occ; ρ, kwargs...)
     A1 = zeros(complex(T), basis.fft_size)
     A2 = zeros(complex(T), basis.fft_size)
     ρ_fourier = r_to_G(basis, ρ[:, :, :, 1])
-    ρref_fourier = r_to_G(basis, term.ρref.fourier) # TODO optimize
+    ρref_fourier = r_to_G(basis, term.ρref) # TODO optimize
     for (iG, G) in enumerate(G_vectors_cart(basis))
         G2 = sum(abs2, G)
         if G2 != 0

@@ -30,9 +30,8 @@ function test_chi0(;symmetry=false, use_symmetry=false, temperature=0,
         model = model_LDA(testcase.lattice, [spec => testcase.positions]; model_kwargs...)
         basis = PlaneWaveBasis(model, Ecut; basis_kwargs...)
 
-        ρ0     = guess_density(basis)
-        ρspin0 = guess_spin_density(basis, magnetic_moments)
-        energies, ham0 = energy_hamiltonian(basis, nothing, nothing; ρ=ρ0, ρspin=ρspin0)
+        ρ0     = guess_density(basis, magnetic_moments)
+        energies, ham0 = energy_hamiltonian(basis, nothing, nothing; ρ=ρ0)
         res = DFTK.next_density(ham0, tol=tol, eigensolver=diag_full, n_bands=n_bands)
         ρ1  = res.ρout
         ρspin1 = res.ρ_spin_out

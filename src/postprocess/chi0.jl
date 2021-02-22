@@ -161,7 +161,7 @@ returns `3` extra bands, which are not converged by the eigensolver
     # not be necessary, but it simplifies the interaction with the
     # Sternheimer linear solver (it makes the rhs be order 1 even if
     # δV is small)
-    normδV = norm(δV.real)
+    normδV = norm(δV)
     normδV < eps(T) && return zero(normδV)
 
     # Make δV respect the full model symmetry group, since it's
@@ -169,7 +169,7 @@ returns `3` extra bands, which are not converged by the eigensolver
     # could be made to only respect basis.symmetries, but symmetrizing wrt
     # the model symmetry group means that χ0 is unaffected by the
     # use_symmetry kwarg of basis, which is nice)
-    δV = symmetrize(δV) / normδV
+    δV = symmetrize(basis, δV) / normδV
 
     if droptol > 0 && sternheimer_contribution == true
         error("Droptol cannot be positive if sternheimer contribution is to be computed.")

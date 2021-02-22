@@ -128,7 +128,7 @@ export kgrid_size_from_minimal_spacing
 include("symmetry.jl")
 include("bzmesh.jl")
 
-export guess_density, guess_spin_density
+export guess_density
 export load_psp
 export list_psp
 include("guess_density.jl")

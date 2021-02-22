@@ -22,7 +22,10 @@ function run_oxygen_pbe(T; kwargs...)
                       magnetic_moments=magnetic_moments)
     basis = PlaneWaveBasis(model, Ecut; fft_size=[24, 24, 30], kgrid=[1, 1, 1])
 
-    scfres = run_scf_and_compare(T, basis, ref_evals, ref_etot; test_etot=false, kwargs...)
+    scfres = run_scf_and_compare(T, basis, ref_evals, ref_etot;
+                                 ρ=guess_density(basis, magnetic_moments),
+                                 test_etot=false,
+                                 kwargs...)
     @test scfres.energies.total ≈ ref_etot atol=1e-4  # A little large a difference ...
 
     dVol = scfres.basis.model.unit_cell_volume / prod(scfres.basis.fft_size)

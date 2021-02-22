@@ -101,7 +101,7 @@ Solve the Kohn-Sham equations with a SCF algorithm, starting at ρ.
         ψ, eigenvalues, occupation, εF, ρout = nextstate
 
         if enforce_symmetry
-            ρout = DFTK.symmetrize(ρout)
+            ρout = DFTK.symmetrize(basis, ρout)
         end
 
         # Update info with results gathered so far
@@ -120,7 +120,7 @@ Solve the Kohn-Sham equations with a SCF algorithm, starting at ρ.
         δρ = mix(mixing, basis, ρout - ρin; info...)
         ρnext = δρ + ρin
         if enforce_symmetry
-            ρnext = DFTK.symmetrize(ρnext)
+            ρnext = DFTK.symmetrize(basis, ρnext)
         end
         info = merge(info, (; ρnext=ρnext))
 

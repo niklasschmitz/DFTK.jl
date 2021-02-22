@@ -68,9 +68,9 @@ end
     δFtot_fourier = total_density(δF_fourier)
     δFspin_fourier = spin_density(δF_fourier)
 
-    δρtot_fourier    = δF_fourier .* G² ./ (kTF.^2 .+ G²)
+    δρtot_fourier    = δFtot_fourier .* G² ./ (kTF.^2 .+ G²)
     δρtot = G_to_r(basis, δρtot_fourier)
-    δρtot .+= mean(δFtot) .- mean(δρtot) # Copy DC component, otherwise it never gets updated
+    δρtot .+= mean(total_density(δF)) .- mean(δρtot) # Copy DC component, otherwise it never gets updated
 
     if basis.model.n_spin_components == 1
         δρspin = nothing
@@ -98,7 +98,7 @@ end
         dos  = compute_dos(εF, basis, eigenvalues)
         kTF  = sqrt(4π * sum(dos))
         ΔDOS = n_spin == 2 ? dos[1]-dos[2] : 0.0
-        mix(KerkerMixing(α=mixing.α, kTF=kTF, ΔDOS=ΔDOS), basis, δF, δFspin)
+        mix(KerkerMixing(α=mixing.α, kTF=kTF, ΔDOS=ΔDOS), basis, δF)
     end
 end
 
@@ -120,7 +120,7 @@ The mixing is applied to ``ρ`` and ``ρ_\text{spin}`` in the same way.
 end
 @timing "DielectricMixing" function mix(mixing::DielectricMixing, basis::PlaneWaveBasis,
                                         δF; kwargs...)
-    T = eltype(δFs[1])
+    T = eltype(δF)
     εr = T(mixing.εr)
     kTF = T(mixing.kTF)
     εr == 1               && return mix(SimpleMixing(α=mixing.α), basis, δF)
@@ -145,7 +145,7 @@ The model for the susceptibility is
 where ``C_0 = 1 - ε_r``, ``D_\text{loc}`` is the local density of states,
 ``D`` is the density of states and
 the same convention for parameters are used as in [`DielectricMixing`](@ref).
-Additionally there is the real-space localisation function `L(r)`.
+Additionally there is the real-space localization function `L(r)`.
 For details see Herbst, Levitt 2020 arXiv:2009.01665
 
 Important `kwargs` passed on to [`χ0Mixing`](@ref)
@@ -154,8 +154,8 @@ Important `kwargs` passed on to [`χ0Mixing`](@ref)
   used and not XC kernel)
 - `verbose`: Run the GMRES in verbose mode.
 """
-function HybridMixing(;εr=1.0, kTF=0.8, localisation=identity, kwargs...)
-    χ0terms = [DielectricModel(εr=εr, kTF=kTF, localisation=localisation), LdosModel()]
+function HybridMixing(;εr=1.0, kTF=0.8, localization=identity, kwargs...)
+    χ0terms = [DielectricModel(εr=εr, kTF=kTF, localization=localization), LdosModel()]
     χ0Mixing(; χ0terms=χ0terms, kwargs...)
 end
 
@@ -180,7 +180,7 @@ end
     @assert basis.model.spin_polarization in (:none, :spinless, :collinear)
 
     # Initialise χ0terms and remove nothings (terms that don't yield a contribution)
-    χ0applies = [χ0(basis; ρin=ρin, ρ_spin_in=ρ_spin_in, kwargs...) for χ0 in mixing.χ0terms]
+    χ0applies = [χ0(basis; ρin=ρin, kwargs...) for χ0 in mixing.χ0terms]
     χ0applies = [apply for apply in χ0applies if !isnothing(apply)]
 
     # If no applies left, do not bother running GMRES and directly do simple mixing

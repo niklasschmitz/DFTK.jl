@@ -26,7 +26,7 @@ function ScfDefaultCallback()
         end
         E    = isnothing(info.energies) ? Inf : info.energies.total
         Δρ   = norm(info.ρout - info.ρin) * sqrt(dVol)
-        magn = size(info.ρout, 4) == 1 ? NaN : sum(spin_density(ρout)) * dVol
+        magn = size(info.ρout, 4) == 1 ? NaN : sum(spin_density(info.ρout)) * dVol
 
         Estr   = (@sprintf "%+15.12f" round(E, sigdigits=13))[1:15]
         prev_E = prev_energies === nothing ? Inf : prev_energies.total

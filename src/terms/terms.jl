@@ -135,7 +135,7 @@ compute_kernel(::Term; kwargs...) = nothing  # By default no kernel
 
 
 """
-    apply_kernel(basis::PlaneWaveBasis, dρ, dρspin=nothing; kwargs...)
+    apply_kernel(basis::PlaneWaveBasis, dρ; kwargs...)
 
 Computes the potential response to a perturbation dρ in real space.
 """
