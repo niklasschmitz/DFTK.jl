@@ -223,7 +223,7 @@ end
 """
 Symmetrize a density by applying all the model symmetries (by default) and forming the average.
 """
-@views function symmetrize(basis, ρin; symmetries=ρin.basis.model.symmetries)
+@views function symmetrize(basis, ρin; symmetries=basis.model.symmetries)
     ρin_fourier = r_to_G(basis, ρin)
     ρout_fourier = copy(ρin_fourier)
     for σ = 1:size(ρin, 4)

@@ -18,7 +18,7 @@ function test_kernel_unpolarized(termtype; test_compute=true)
         term  = only(basis.terms)
 
         ρ0 = guess_density(basis)
-        dρ = from_real(basis, randn(size(ρ0)))
+        dρ = randn(size(ρ0))
 
         ρ_minus = ρ0 - ε * dρ
         ρ_plus  = ρ0 + ε * dρ
@@ -31,7 +31,7 @@ function test_kernel_unpolarized(termtype; test_compute=true)
 
         if test_compute
             kernel = DFTK.compute_kernel(term; ρ=ρ0)
-            dV_compute = reshape(kernel * vec(dρ.real), size(dρ))
+            dV_compute = reshape(kernel * vec(dρ), size(dρ))
             @test norm(dV - dV_compute) < 100ε
         end
     end

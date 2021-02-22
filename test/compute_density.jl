@@ -24,14 +24,14 @@ if mpi_nprocs() == 1  # not easy to distribute
 
         res = diagonalize_all_kblocks(lobpcg_hyper, ham, n_bands; tol=tol)
         occ, εF = DFTK.compute_occupation(basis, res.λ)
-        ρnew, ρspin_new = compute_density(basis, res.X, occ)
+        ρnew = compute_density(basis, res.X, occ)
 
         for it in 1:n_rounds
-            ham = Hamiltonian(basis; ρ=ρnew, ρspin=ρspin_new)
+            ham = Hamiltonian(basis; ρ=ρnew)
             res = diagonalize_all_kblocks(lobpcg_hyper, ham, n_bands; tol=tol, guess=res.X)
 
             occ, εF = DFTK.compute_occupation(basis, res.λ)
-            ρnew, ρspin_new = compute_density(basis, res.X, occ)
+            ρnew = compute_density(basis, res.X, occ)
         end
 
         ham, res.X, res.λ, ρnew, occ
@@ -74,9 +74,8 @@ if mpi_nprocs() == 1  # not easy to distribute
         @test ham_full.basis.fft_size == ham_ir.basis.fft_size
 
         # Test density is the same in both schemes, and symmetric wrt the basis symmetries
-        @test maximum(abs.(ρ_ir.fourier - ρ_full.fourier)) < 10tol
-        @test maximum(abs.(ρ_ir.real - ρ_full.real)) < 10tol
-        @test maximum(abs, DFTK.symmetrize(ρ_ir; symmetries=symmetries).fourier - ρ_ir.fourier) < tol
+        @test maximum(abs.(ρ_ir - ρ_full)) < 10tol
+        @test maximum(abs, DFTK.symmetrize(basis, ρ_ir; symmetries=symmetries) - ρ_ir) < tol
 
         # Test local potential is the same in both schemes
         @test maximum(abs, total_local_potential(ham_ir) - total_local_potential(ham_full)) < tol
@@ -129,7 +128,7 @@ if mpi_nprocs() == 1  # not easy to distribute
             end  # k
 
             @test n_ρ == length(kfull)
-            @test maximum(abs, ρsum / n_ρ - ρ_full.fourier) < 10tol
+            @test maximum(abs, ρsum / n_ρ - r_to_G(basis, ρ_full)) < 10tol
         end # eigenvectors
     end
 
