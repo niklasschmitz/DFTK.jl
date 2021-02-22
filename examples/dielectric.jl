@@ -22,11 +22,9 @@ scfres = self_consistent_field(basis, tol=1e-14)
 
 # Apply ε† = 1 - χ0 (vc + fxc)
 function eps_fun(dρ)
-    dρ = reshape(dρ, size(scfres.ρ))
     dv = apply_kernel(basis, dρ; ρ=scfres.ρ)
     χdv = apply_χ0(scfres.ham, scfres.ψ, scfres.εF, scfres.eigenvalues, dv)
-    vec(dρ - χdv)
 end
 
 # eager diagonalizes the subspace matrix at each iteration
-eigsolve(eps_fun, vec(randn(size(scfres.ρ))), 5, :LM; eager=true, verbosity=3)
+eigsolve(eps_fun, randn(size(scfres.ρ)), 5, :LM; eager=true, verbosity=3)
