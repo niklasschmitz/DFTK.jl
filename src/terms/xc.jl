@@ -93,7 +93,7 @@ end
     (E=E, ops=ops)
 end
 
-function compute_kernel(term::TermXc; ρ::RealFourierArray, ρspin=nothing, kwargs...)
+function compute_kernel(term::TermXc; ρ, kwargs...)
     @assert term.basis.model.spin_polarization in (:none, :spinless, :collinear)
     density = LibxcDensity(term.basis, 0, ρ, ρspin)
     n_spin = term.basis.model.n_spin_components

@@ -221,12 +221,16 @@ function lowpass_for_symmetry!(ρ, basis; symmetries=basis.model.symmetries)
 end
 
 """
-Symmetrize a `RealFourierArray` by applying all the model symmetries (by default) and forming the average.
+Symmetrize a density by applying all the model symmetries (by default) and forming the average.
 """
-function symmetrize(basis, ρin; symmetries=ρin.basis.model.symmetries)
+@views function symmetrize(basis, ρin; symmetries=ρin.basis.model.symmetries)
     ρin_fourier = r_to_G(basis, ρin)
-    lowpass_for_symmetry!(ρin_fourier, basis; symmetries=symmetries)
-    ρout_fourier = accumulate_over_symmetries!(zero(ρin_fourier), ρin_fourier, basis, symmetries)
+    ρout_fourier = copy(ρin_fourier)
+    for σ = 1:size(ρin, 4)
+        lowpass_for_symmetry!(ρin_fourier[:, :, :, σ], basis; symmetries=symmetries)
+        ρout_fourier[:, :, :, σ] = accumulate_over_symmetries!(zero(ρin_fourier[:, :, :, σ]),
+                                                               ρin_fourier[:, :, :, σ], basis, symmetries)
+    end
     G_to_r(basis, ρout_fourier ./ length(symmetries))
 end
 

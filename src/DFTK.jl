@@ -58,11 +58,6 @@ include("Smearing.jl")
 include("Model.jl")
 include("PlaneWaveBasis.jl")
 
-export RealFourierArray
-export from_real
-export from_fourier
-include("RealFourierArray.jl")
-
 export Energies
 include("energies.jl")
 
@@ -88,8 +83,11 @@ export apply_kernel
 export compute_kernel
 include("terms/terms.jl")
 
-export compute_density
 include("occupation.jl")
+export compute_density
+export total_density
+export spin_density
+export ρ_from_total_and_spin
 include("densities.jl")
 include("interpolation.jl")
 

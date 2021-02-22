@@ -5,10 +5,9 @@ Interpolate a function expressed in a basis `b_in` to a basis `b_out`
 This interpolation uses a very basic real-space algorithm, and makes
 a DWIM-y attempt to take into account the fact that b_out can be a supercell of b_in
 """
-function interpolate_density(ρ_in::RealFourierArray, b_out::PlaneWaveBasis)
-    ρ_out = interpolate_density(ρ_in.real, ρ_in.basis.fft_size, b_out.fft_size,
-                                ρ_in.basis.model.lattice, b_out.model.lattice)
-    from_real(b_out, ρ_out)
+function interpolate_density(ρ_in, b_in::PlaneWaveBasis, b_out::PlaneWaveBasis)
+    ρ_out = interpolate_density(ρ_in, b_in.fft_size, b_out.fft_size,
+                                b_in.model.lattice, b_out.model.lattice)
 end
 
 # TODO Specialization for the common case lattice_out = lattice_in

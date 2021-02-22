@@ -1,3 +1,4 @@
+## TODO switch this to a [:,:,:,α] representation?
 """
 Computes the *probability* (not charge) current, ∑ fn Im(ψn* ∇ψn)
 """
