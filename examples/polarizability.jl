@@ -96,7 +96,7 @@ dVext = cat(dVext; dims=4)
 dρ_nointeract = apply_χ0(res.ham, res.ψ, res.εF, res.eigenvalues, dVext)
 
 ## Solve Dyson equation to get interacting dipole
-dρ = devec(linsolve(dielectric_operator, dρ_nointeract, verbosity=3)[1])
+dρ = linsolve(dielectric_operator, dρ_nointeract, verbosity=3)[1]
 
 println("Non-interacting polarizability: $(dipole(basis, dρ_nointeract))")
 println("Interacting polarizability:     $(dipole(basis, dρ))")
