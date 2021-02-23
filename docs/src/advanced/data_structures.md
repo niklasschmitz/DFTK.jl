@@ -149,7 +149,7 @@ Again the function is normalised:
 
 ```@example data_structures
 ψreal = G_to_r(basis, basis.kpoints[1], ψtest)
-sum(abs2.(ψreal)) * model.unit_cell_volume / prod(basis.fft_size)
+sum(abs2.(ψreal)) * basis.integration_factor
 ```
 
 The list of ``k`` points of the basis can be obtained with `basis.kpoints`.

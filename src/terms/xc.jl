@@ -58,8 +58,7 @@ end
         terms = evaluate(xc, density; zk=zk)
 
         # Add energy contribution
-        dVol = basis.model.unit_cell_volume / prod(basis.fft_size)
-        E += sum(terms.zk .* ρ) * dVol
+        E += sum(terms.zk .* ρ) * term.basis.integration_factor
 
         # Add potential contributions Vρ -2 ∇⋅(Vσ ∇ρ)
         for σ in 1:n_spin

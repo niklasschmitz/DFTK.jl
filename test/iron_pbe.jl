@@ -59,8 +59,7 @@ function run_iron_pbe(T; kwargs...)
                                  ρ=guess_density(basis, magnetic_moments),
                                  kwargs...)
 
-    dVol = scfres.basis.model.unit_cell_volume / prod(scfres.basis.fft_size)
-    magnetisation = sum(spin_density(scfres.ρ)) * dVol
+    magnetisation = sum(spin_density(scfres.ρ)) * basis.integration_factor
     @test magnetisation ≈ ref_magn atol=5e-5
 end
 

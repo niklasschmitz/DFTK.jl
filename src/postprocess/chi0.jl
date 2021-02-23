@@ -46,7 +46,6 @@ function compute_χ0(ham; droptol=0, temperature=ham.basis.model.temperature)
     basis = ham.basis
     model = basis.model
     filled_occ = filled_occupation(model)
-    dVol     = basis.model.unit_cell_volume / prod(basis.fft_size)
     n_spin   = basis.model.n_spin_components
     fft_size = basis.fft_size
     n_fft    = prod(fft_size)
@@ -78,10 +77,11 @@ function compute_χ0(ham; droptol=0, temperature=ham.basis.model.temperature)
             ddiff = Smearing.occupation_divided_difference
             ratio = filled_occ * ddiff(model.smearing, E[m], E[n], εF, temperature)
             (n != m) && (abs(ratio) < droptol) && continue
-            # dVol because inner products have a dVol so that |f> becomes <dVol f|
+            # integration_factor because inner products have a integration_factor in them
+            # so that the dual gets one
             # can take the real part here because the nm term is complex conjugate of mn
             # TODO optimize this a bit... use symmetry nm, reduce allocs, etc.
-            factor = basis.kweights[ik] * ratio * dVol
+            factor = basis.kweights[ik] * ratio * basis.integration_factor
 
             @views χ0σσ .+= factor .* real(conj((Vr[:, m] .* Vr[:, m]'))
                                            .*   (Vr[:, n] .* Vr[:, n]'))
@@ -93,7 +93,7 @@ function compute_χ0(ham; droptol=0, temperature=ham.basis.model.temperature)
     if temperature > 0
         dos  = compute_dos(εF, basis, Es)
         ldos = compute_ldos(εF, basis, Es, Vs)
-        χ0 .+= vec(ldos) .* vec(ldos)' .* dVol ./ sum(dos)
+        χ0 .+= vec(ldos) .* vec(ldos)' .* basis.integration_factor ./ sum(dos)
     end
     χ0
 end
@@ -197,11 +197,10 @@ returns `3` extra bands, which are not converged by the eigensolver
 
     # Add variation wrt εF
     if temperature > 0
-        dVol = basis.model.unit_cell_volume / prod(basis.fft_size)
         ldos = compute_ldos(εF, basis, eigenvalues, ψ, temperature=temperature)
         dos  = compute_dos(εF, basis, eigenvalues, temperature=temperature)
 
-        δρ .+= ldos .* dot(ldos, δV) .* dVol ./ sum(dos)
+        δρ .+= ldos .* dot(ldos, δV) .* basis.integration_factor ./ sum(dos)
     end
     δρ .* normδV
 end
@@ -219,7 +218,6 @@ function add_response_from_band!(δρk, n, hamk, εk, ψk, εF, δV,
     T = eltype(basis)
     model = basis.model
     filled_occ = filled_occupation(model)
-    dVol = basis.model.unit_cell_volume / prod(basis.fft_size)
 
     ψnk = @view ψk[:, n]
     ψnk_real = G_to_r(basis, hamk.kpoint, ψnk)
@@ -242,7 +240,7 @@ function add_response_from_band!(δρk, n, hamk, εk, ψk, εF, δV,
         ψmk_real = G_to_r(basis, hamk.kpoint, @view ψk[:, m])
         # ∑_{n,m != n} (fn-fm)/(εn-εm) ρnm <ρmn|δV>
         ρnm = conj(ψnk_real) .* ψmk_real
-        weight = dVol * dot(ρnm, δV)
+        weight = basis.integration_factor * dot(ρnm, δV)
         δρk .+= (n == m ? 1 : 2) * real(ratio .* weight .* ρnm)
     end
 

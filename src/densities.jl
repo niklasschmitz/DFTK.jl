@@ -28,7 +28,7 @@ function compute_partial_density!(ρ, basis, kpt, ψk, occupation)
         minimum(real(ρk_real)) < 0 && @warn("Negative ρ detected",
                                             min_ρ=minimum(real(ρk_real)))
     end
-    n_electrons = sum(ρk_real) * basis.model.unit_cell_volume / prod(basis.fft_size)
+    n_electrons = sum(ρk_real) * basis.integration_factor
     if abs(n_electrons - sum(occupation)) > sqrt(eps(T))
         @warn("Mismatch in number of electrons", sum_ρ=n_electrons,
               sum_occupation=sum(occupation))

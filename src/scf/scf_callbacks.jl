@@ -16,7 +16,6 @@ function ScfDefaultCallback()
             return info
         end
         collinear = info.basis.model.spin_polarization == :collinear
-        dVol      = info.basis.model.unit_cell_volume / prod(info.basis.fft_size)
 
         if info.n_iter == 1
             E_label = haskey(info.energies, "Entropy") ? "Free energy" : "Energy"
@@ -25,8 +24,10 @@ function ScfDefaultCallback()
             @printf "---   ---------------   ---------   --------%s   ----\n" magn[2]
         end
         E    = isnothing(info.energies) ? Inf : info.energies.total
-        Δρ   = norm(info.ρout - info.ρin) * sqrt(dVol)
-        magn = size(info.ρout, 4) == 1 ? NaN : sum(spin_density(info.ρout)) * dVol
+        Δρ   = norm(info.ρout - info.ρin) * sqrt(info.basis.integration_factor)
+        magn = size(info.ρout, 4) == 1 ?
+            NaN :
+            sum(spin_density(info.ρout)) * info.basis.integration_factor
 
         Estr   = (@sprintf "%+15.12f" round(E, sigdigits=13))[1:15]
         prev_E = prev_energies === nothing ? Inf : prev_energies.total
@@ -51,8 +52,9 @@ function ScfConvergenceEnergy(tolerance)
         info.energies === nothing && return false # first iteration
 
         # The ρ change should also be small, otherwise we converge if the SCF is just stuck
-        dVol      = info.basis.model.unit_cell_volume / prod(info.basis.fft_size)
-        norm(info.ρout - info.ρin) * sqrt(dVol) > 10sqrt(tolerance) && return false
+        if norm(info.ρout - info.ρin) * sqrt(info.basis.integration_factor) > 10sqrt(tolerance)
+            return false
+        end
 
         etot_old = energy_total
         energy_total = info.energies.total
@@ -67,8 +69,7 @@ input density and unpreconditioned output density (ρout)
 """
 function ScfConvergenceDensity(tolerance)
     function f(info)
-        dVol      = info.basis.model.unit_cell_volume / prod(info.basis.fft_size)
-        norm(info.ρout - info.ρin) * sqrt(dVol) < tolerance
+        norm(info.ρout - info.ρin) * sqrt(info.basis.integration_factor) < tolerance
     end
     f
 end
@@ -85,8 +86,9 @@ function ScfDiagtol(;ratio_ρdiff=0.2, diagtol_min=nothing, diagtol_max=0.03)
         info.n_iter ≤ 1 && return diagtol_max
         info.n_iter == 2 && (diagtol_max /= 5)  # Enforce more accurate Bloch wave
 
-        dVol      = info.basis.model.unit_cell_volume / prod(info.basis.fft_size)
-        diagtol = norm(info.ρnext - info.ρin) * sqrt(dVol) * ratio_ρdiff
+        diagtol = (norm(info.ρnext - info.ρin)
+                   * sqrt(info.basis.integration_factor)
+                   * ratio_ρdiff)
         # TODO Quantum espresso divides diagtol by the number of electrons
         diagtol = clamp(diagtol, diagtol_min, diagtol_max)
         @assert isfinite(diagtol)

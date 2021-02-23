@@ -77,6 +77,8 @@ struct PlaneWaveBasis{T <: Real}
     # fft_size defines both the G basis on which densities and
     # potentials are expanded, and the real-space grid
     fft_size::Tuple{Int, Int, Int}
+    # factor for integrals in real space: sum(ρ) * integration_factor ~ ∫ρ
+    integration_factor::T  # = model.unit_cell_volume ./ prod(fft_size)
 
     # Plans for forward and backward FFT
     # These plans follow DFTK conventions (see above)
@@ -228,10 +230,12 @@ build_kpoints(basis::PlaneWaveBasis, kcoords) =
     # Create dummy terms array for basis to handle
     terms = Vector{Any}(undef, length(model.term_types))
 
+    integration_factor = model.unit_cell_volume ./ prod(fft_size)
+
     basis = PlaneWaveBasis{T}(
         model, Ecut, variational, kpoints,
         kweights, ksymops, kgrid, kshift, comm_kpts, krange_thisproc, krange_allprocs,
-        fft_size, opFFT, ipFFT, opIFFT, ipIFFT,
+        fft_size, integration_factor, opFFT, ipFFT, opIFFT, ipIFFT,
         opFFT_unnormalized, ipFFT_unnormalized, opBFFT_unnormalized, ipBFFT_unnormalized,
         terms, symmetries)
     @assert length(kpoints) == length(kweights)

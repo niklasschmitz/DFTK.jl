@@ -17,7 +17,6 @@ For details see Herbst, Levitt 2020 arXiv:2009.01665
 struct LdosModel <: χ0Model end
 function (::LdosModel)(basis; eigenvalues, ψ, εF, kwargs...)
     n_spin = basis.model.n_spin_components
-    dVol   = basis.model.unit_cell_volume / prod(basis.fft_size)
 
     # Catch cases that will yield no contribution
     iszero(basis.model.temperature) && return nothing
@@ -26,9 +25,9 @@ function (::LdosModel)(basis; eigenvalues, ψ, εF, kwargs...)
         return nothing
     end
 
-    dos = sum(sum, ldos) * dVol
+    dos = sum(sum, ldos) * basis.integration_factor
     function apply!(δρ, δV, α=1)
-        δεF = dot(ldos, δV) .* dVol
+        δεF = dot(ldos, δV) .* basis.integration_factor
         δρ .+= α .* (-ldos .* δV
                      .+ ldos .* δεF ./ dos)
     end

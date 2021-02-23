@@ -26,7 +26,6 @@ include("testcases.jl")
         E2 = scfres.energies.total
 
         @test abs(E1 - E2) < 1e-10
-        dVol = basis.model.unit_cell_volume / prod(basis.fft_size)
-        @test norm(ρ1 - ρ2) .* sqrt(dVol) < 1e-8
+        @test norm(ρ1 - ρ2) .* sqrt(basis.integration_factor) < 1e-8
     end
 end

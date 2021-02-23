@@ -28,8 +28,7 @@ function run_oxygen_pbe(T; kwargs...)
                                  kwargs...)
     @test scfres.energies.total ≈ ref_etot atol=1e-4  # A little large a difference ...
 
-    dVol = scfres.basis.model.unit_cell_volume / prod(scfres.basis.fft_size)
-    magnetization = sum(spin_density(scfres.ρ)) * dVol
+    magnetization = sum(spin_density(scfres.ρ)) * basis.integration_factor
     @test magnetization ≈ ref_magn atol=5e-6
 end
 
