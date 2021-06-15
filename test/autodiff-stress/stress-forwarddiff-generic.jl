@@ -18,7 +18,8 @@ function make_basis(a)
         AtomicLocal(),
         # AtomicNonlocal(), # gives NaN ForwardDiff
         Ewald(),
-        PspCorrection()
+        PspCorrection(),
+        Entropy()
     ]
     model = Model(lattice; atoms=atoms, terms=terms, symmetries=false)
     kgrid = [1, 1, 1]  # k-point grid (Regular Monkhorst-Pack grid)
@@ -30,8 +31,8 @@ a = 10.26
 basis = make_basis(a)
 
 # scfres = self_consistent_field(basis, tol=1e-8) # LoadError: Unable to find non-fractional occupations that have the correct number of electrons. You should add a temperature.
-# try a bogus tolerance for debugging
-scfres = self_consistent_field(basis, tol=1e9)
+# try a high tolerance for debugging
+scfres = self_consistent_field(basis, tol=1e-4)
 
 function compute_energy(scfres_ref, a)
     basis = make_basis(a)
@@ -43,7 +44,8 @@ compute_energy(a) = compute_energy(scfres, a)
 compute_energy(10.26)
 
 import FiniteDiff
-FiniteDiff.finite_difference_derivative(compute_energy, 10.26) # -11.113556738689041
+FiniteDiff.finite_difference_derivative(compute_energy, 10.26) # -11.115631567324957
 
 using ForwardDiff
-ForwardDiff.derivative(compute_energy, 10.26) # -11.113556738089288 
+ForwardDiff.derivative(compute_energy, 10.26) # -11.115631566795612
+ 
