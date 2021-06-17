@@ -16,7 +16,7 @@ function make_basis(a)
     terms = [
         Kinetic(),
         AtomicLocal(),
-        # AtomicNonlocal(), # gives NaN ForwardDiff
+        AtomicNonlocal(),
         Ewald(),
         PspCorrection(),
         Entropy()
@@ -28,11 +28,7 @@ function make_basis(a)
 end
 
 a = 10.26
-basis = make_basis(a)
-
-# scfres = self_consistent_field(basis, tol=1e-8) # LoadError: Unable to find non-fractional occupations that have the correct number of electrons. You should add a temperature.
-# try a high tolerance for debugging
-scfres = self_consistent_field(basis, tol=1e-4)
+scfres = self_consistent_field(make_basis(a), tol=1e-8)
 
 function compute_energy(scfres_ref, a)
     basis = make_basis(a)
@@ -44,8 +40,8 @@ compute_energy(a) = compute_energy(scfres, a)
 compute_energy(10.26)
 
 import FiniteDiff
-FiniteDiff.finite_difference_derivative(compute_energy, 10.26) # -11.115631567324957
+FiniteDiff.finite_difference_derivative(compute_energy, 10.26) # -1.411447980825219
 
 using ForwardDiff
-ForwardDiff.derivative(compute_energy, 10.26) # -11.115631566795612
+ForwardDiff.derivative(compute_energy, 10.26) # -1.4114479804414088
  
