@@ -30,6 +30,14 @@ Compute the stresses (= 1/Vol dE/d(M*lattice), taken at M=I) of an obtained SCF 
     end
     L = scfres.basis.model.lattice
     Ω = scfres.basis.model.unit_cell_volume
-    stresses_not_symmetrized = ForwardDiff.gradient(M -> HF_energy((I+M) * L), zero(L)) / Ω
+    # Use chunk size 1 to reduce JIT compilation time on first call.
+    # The default chunk size of 9 (for the 3×3 matrix) creates Dual{Tag,Float64,9}
+    # types that propagate through the entire Model/PlaneWaveBasis/energy chain,
+    # causing excessive compilation. Chunk size 1 uses Dual{Tag,Float64,1} which
+    # compiles much faster, at the cost of 9 forward passes instead of 1.
+    f = M -> HF_energy((I+M) * L)
+    x = zero(L)
+    cfg = ForwardDiff.GradientConfig(f, x, ForwardDiff.Chunk{1}())
+    stresses_not_symmetrized = ForwardDiff.gradient(f, x, cfg) / Ω
     symmetrize_stresses(L, scfres.basis.symmetries, stresses_not_symmetrized)
 end
